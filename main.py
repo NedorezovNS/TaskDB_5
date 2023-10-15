@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2.sql import SQL, Identifier
 
 
 def create_base(conn):
@@ -47,13 +48,10 @@ def add_phone(conn, client_id, phone):
 
 def change_client(conn, client_id, name=None, surname=None, email=None):
     with conn.cursor() as cur:
-        cur.execute("""
-        UPDATE client_base
-        SET name=%s, surname=%s, email=%s
-        WHERE client_id=%s;
-        """, (name, surname, email, client_id))
-        conn.commit()
-    pass
+        arg_list = {'name': name, "surname": surname, 'email': email}
+        for key, arg in arg_list.items():
+            if arg:
+                cur.execute(SQL("UPDATE client_base SET {}=%s WHERE client_id=%s").format(Identifier(key)), (arg, client_id))
 
 
 def delete_phone(conn, client_id, phone):
@@ -82,13 +80,13 @@ def delete_client(conn, client_id):
 
 def find_client(conn, name=None, surname=None, email=None, phone=None):
     with conn.cursor() as cur:
-        cur.execute("""
-        SELECT cb.name, cb.surname, cb.email, pb.phone FROM client_base cb
-        JOIN phone_base pb ON cb.client_id=pb.client_id
-        WHERE (name = %(name)s) OR (surname = %(surname)s)
-        OR (email = %(email)s) OR (phone = %(phone)s);
-        """, {'name': name, 'surname': surname, 'email': email, 'phone': phone})
-        return print(cur.fetchall())
+        arg = {'name': name, 'surname': surname, 'email': email, 'phone': phone}
+        for key, values in arg.items():
+            if values:
+                cur.execute(SQL("""SELECT cb.client_id, name, surname, email, phone
+                FROM client_base cb LEFT JOIN phone_base pb ON cb.client_id=pb.client_id
+                WHERE {}=%s""").format(Identifier(key)), (values,))
+                print(cur.fetchall())
     pass
 
 
@@ -98,29 +96,37 @@ def show_all(conn):
         SELECT cb.client_id, cb.name, cb.surname, cb.email, pb.phone FROM client_base cb
         JOIN phone_base pb ON pb.client_id=cb.client_id;
         """)
-        return print(cur.fetchall())
+        all_list = cur.fetchall()
+        return print(*all_list, sep='\n')
 
 
-with psycopg2.connect(database="ClientDataBase", user="postgres", password="130814") as conn:
-    create_base(conn)
+if __name__ == "__main__":
+    with psycopg2.connect(database="ClientDataBase", user="postgres", password="130814") as conn:
+        create_base(conn)
 
-    add_client(conn, 'Александр', 'Петров', 'SashaP@ya.ru')
-    add_client(conn, 'Светлана', 'Пупкова', 'SvetaPup@gmail.com')
-    add_client(conn, 'Андрей', 'Духовкин', 'Andreeeeeey@mail.ru')
+        print("\nСоздаем новых клиентов:")
+        add_client(conn, 'Александр', 'Петров', 'SashaP@ya.ru')
+        add_client(conn, 'Светлана', 'Пупкова', 'SvetaPup@gmail.com')
+        add_client(conn, 'Андрей', 'Духовкин', 'Andreeeeeey@mail.ru')
+        add_client(conn, 'Четвертый', 'Клиент', '4ert@ya.ru')
 
-    add_phone(conn, 1, '87773210055')
-    add_phone(conn, 1, '88885558899')
-    add_phone(conn, 2, '84447857879')
-    add_phone(conn, 3, '88005553535')
+        print("\nДобавляем номера телефонов:")
+        add_phone(conn, 1, '87773210055')
+        add_phone(conn, 1, '88885558899')
+        add_phone(conn, 2, '84447857879')
+        add_phone(conn, 3, '88005553535')
+        add_phone(conn, 4, '88002741001')
 
-    change_client(conn, 1, 'Олег', 'Васильев', 'OlegV@gmail.com')
+        change_client(conn, 1, None, 'Васильев', 'SashaV@gmail.com')
 
-    delete_phone(conn, 1, '87773210055')
+        delete_phone(conn, 1, '87773210055')
 
-    delete_client(conn, 2)
+        delete_client(conn, 2)
 
-    find_client(conn, 'Олег')
+        print("\nРезультаты поиска:")
+        find_client(conn, 'Четвертый', '', '', '88005553535')
 
-    show_all(conn)  # Вывод имеющихся данных после всех изменений.
-    pass
+        print(f"\nВывод данных обо всех клиентах:")
+        show_all(conn)
+        pass
 conn.close()
