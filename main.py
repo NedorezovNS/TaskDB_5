@@ -54,8 +54,7 @@ def change_client(conn, client_id, name=None, surname=None, email=None):
                 cur.execute(SQL(
                     "UPDATE client_base SET {}=%s"
                     "WHERE client_id=%s")
-                    .format(Identifier(key)), (arg, client_id)
-                )
+                    .format(Identifier(key)), (arg, client_id))
 
 
 def delete_phone(conn, client_id, phone):
