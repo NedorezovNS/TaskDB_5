@@ -51,7 +51,11 @@ def change_client(conn, client_id, name=None, surname=None, email=None):
         arg_list = {'name': name, "surname": surname, 'email': email}
         for key, arg in arg_list.items():
             if arg:
-                cur.execute(SQL("UPDATE client_base SET {}=%s WHERE client_id=%s").format(Identifier(key)), (arg, client_id))
+                cur.execute(SQL(
+                    "UPDATE client_base SET {}=%s"
+                    "WHERE client_id=%s")
+                    .format(Identifier(key)), (arg, client_id)
+                )
 
 
 def delete_phone(conn, client_id, phone):
